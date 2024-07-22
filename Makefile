@@ -9,5 +9,9 @@ build:
 run: build
 	love ./build/$(BUILD_NAME)
 
+run-loop:
+	# Useful for testing as you change the code. Simply close the window to re-lint and restart.
+	while make lint run ; do true ; done
+
 lint:
 	luacheck src/ --no-color

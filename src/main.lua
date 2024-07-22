@@ -19,18 +19,22 @@
 -- TODO legend and scale ACCURATE (orbital AU and width shown on screen)
 --      toggle accuracy (realistic size is too tiny!!!) (realistic luminance is too tiny)
 -- TODO COMETS!!!!!!!!!!!
--- TODO UI buttons
 -- TODO pan and zoom with phone
 -- TODO pan with arrows and mouse
 
+-- Import dependencies
+local ButtonManager = require('external/simplebutton')
 local gamera = require("external/gamera")
 local worldFactory = require("worldFactory")
 
+local handleEvent
 local cam = gamera.new(0, 0, worldFactory.bounds.x * worldFactory.edge, worldFactory.bounds.y * worldFactory.edge)
 local isDown = love.keyboard.isDown
 
+local buttons = {}
+
 -- This stores most game state
-local world
+local world = nil
 
 function love.load()
     print("Welcome to gravity by ROGUH")
@@ -43,10 +47,73 @@ function love.load()
     cam:setWindow(0, 0, w, h)
     cam:setScale(0.25)
 
-    world = worldFactory.initWorld({})
+    local bH = 30
+    local bP = 20
+    ButtonManager.default.width = 60
+    ButtonManager.default.height = bH
+    ButtonManager.default.alignment = 'center'
+    ButtonManager.default.fillType = 'line'
+    ButtonManager.default.color = {1, 1, 1, 1}
+    ButtonManager.default.textColor = {1, 1, 1, 1}
+
+    -- Make sure replaced label is the same character count as initial label, self.setLabel is buggy
+    buttons.start = ButtonManager.new("START", love.graphics.getWidth() / 2, bP + bH)
+    buttons.start.onClick = function()
+        if world then
+            handleEvent("r")
+            return
+        end
+
+        world = worldFactory.initWorld({})
+        buttons.start:setLabel(" NEW ")
+        buttons.start.x = 15
+
+        buttons.zoomIn = ButtonManager.new("+", 3 * 15 + 60, (bP + bH) * 2)
+        buttons.zoomIn.onClick = function() handleEvent("+") end
+
+        buttons.zoomOut = ButtonManager.new("-", 3 * 15 + 60, (bP + bH) * 3)
+        buttons.zoomOut.onClick = function() handleEvent("-") end
+
+        -- Button count
+        -- Button count
+        local i = 2
+
+        buttons.pause = ButtonManager.new("PAUSE", 15, (bP + bH) * i)
+        buttons.pause.onClick = function() handleEvent("space") end
+        i = i + 1
+
+        buttons.mode = ButtonManager.new("M", 15, (bP + bH) * i)
+        buttons.mode.onClick = function() handleEvent("m") end
+        i = i + 1
+
+        -- BUG MINE FIELD!!!!!!!!!
+        -- rework the step event
+        local X = false
+        buttons.step = ButtonManager.new("C", 15, (bP + bH) * i)
+        buttons.step.onClick = function() handleEvent("space") ; X = true end
+        buttons.step.onRelease = function() if X then handleEvent("space") end end
+        i = i + 1
+
+        for k=0,9 do
+            local label = k == 0 and "random" or (k .. "")
+            buttons[label] = ButtonManager.new(label, 15, (bP + bH) * i)
+            buttons[label].onClick = function() handleEvent(k .. "") end
+            i = i + 1
+        end
+
+    end
 end
 
 function love.draw()
+    if not world then
+        love.graphics.print(
+            "Welcome to GRAVITY!"
+            .. " Press the button below to start the simulation :)",
+            10, 10, 0, 1.3)
+        ButtonManager.draw()
+        return
+    end
+
 cam:draw(
 function (_l, _t, _w, _h)
     for i, p in pairs(world.points) do
@@ -59,12 +126,16 @@ function (_l, _t, _w, _h)
             love.graphics.setColor(255, 0, 0)
         end
         local r
-        if p.m > 5000 then
+        -- TODO m_earth
+        -- Draw sun or huge object
+        if p.p == 0 or p.m > 10000 then
             r = 120
-            love.graphics.setColor(196, 196, 0)
+            -- Sun's temperature is 5500 celsius
+            -- Color is from https://andi-siess.de/rgb-to-color-temperature/
+            love.graphics.setColor(255, 236, 224)
             love.graphics.circle("fill", p.x, p.y, r, 40)
         else
-            r = math.max(5, 3 * p.m ^ 0.5)
+            r = math.max(5, 3 * p.m ^ 0.4)
             love.graphics.circle("fill", p.x, p.y, r, 40)
         end
         -- Jove or Saturn
@@ -80,7 +151,7 @@ function (_l, _t, _w, _h)
                     "%d %.4fME  %.1fAU",
                     -- TODO mass of earth=10
                     i - world.dustCount, p.m / 10, p.nearest or 0
-                ), 15 + r + p.x, p.y, 0, 2)
+                ), 15 + r + p.x, p.y, 0, 1)
         end
     end
     end
@@ -88,14 +159,16 @@ function (_l, _t, _w, _h)
 end)
     love.graphics.setColor(255, 255, 255)
     if world.pause then
-        love.graphics.print("PAUSE (press SPACE or C)", 50, 50, 0, 4)
+        love.graphics.print("PAUSE", 100, 100, 0, 4)
     end
 
     love.graphics.print(
-        "GRAVITY  f: fullscreen  space: pause  c: step"
-        .. "  m: mode(" .. worldFactory.MODES[world.mode] .. ")"
-        .. "  0-9: pick by mass (" .. (world.center.byMass or "n/a") ..")",
-        10, 10
+           "  m: mode(" .. worldFactory.MODES[world.mode] .. ")"
+        .. "  0-9: pick by mass (" .. (world.center.byMass or "n/a") ..")"
+        .. "  f: fullscreen  space: pause"
+        .. "  c: step  r: start anew"
+        ,
+        10, 10, 0, 1.3
     )
     local t = 0
     if world.settings.showLabels then
@@ -104,6 +177,8 @@ end)
             t = t + 1
         end
     end
+
+    ButtonManager.draw()
 end
 
 local function adjustCamera()
@@ -129,6 +204,9 @@ local function adjustCamera()
 end
 
 function love.update(dt)
+    if not world then
+        return
+    end
     if world.pause and not isDown("c") then
         adjustCamera()
         return
@@ -185,9 +263,26 @@ function love.update(dt)
     adjustCamera()
 end
 
-function love.keypressed(key, _unicode)
+handleEvent = function(key)
+     print("Handling key", key)
+
+     if key == "q" or key == "escape" then
+        love.event.quit()
+     end
      if key == "f" then
         love.window.setFullscreen(not love.window.getFullscreen())
+     end
+
+     -- Main menu
+     if not world then
+        return
+     end
+
+     if key == "+" then
+        cam:setScale(cam:getScale() / 0.8)
+     end
+     if key == "-" then
+        cam:setScale(cam:getScale() * 0.8)
      end
      if key == "r" then
         world = worldFactory.initWorld({mode=world.mode, pause=world.pause})
@@ -205,6 +300,7 @@ function love.keypressed(key, _unicode)
      -- Digits 1 to 9
      if tonumber(key) and tonumber(key) < 10 then
         world.center = {byMass=tonumber(key)}
+        -- TODO if velocity too large, pause
         if world.center == 1 then
             cam:setScale(0.25)
         else
@@ -219,12 +315,31 @@ end
 
 function love.wheelmoved(_x, y)
     if y > 0 then
-        cam:setScale(cam:getScale() / 0.9)
+        cam:setScale(cam:getScale() / 0.93)
     elseif y < 0 then
-        cam:setScale(cam:getScale() * 0.9)
+        cam:setScale(cam:getScale() * 0.93)
     end
 end
 
 function love.resize(w, h)
+    if not world then
+        -- Centered main menu
+        for _, button in pairs(buttons) do
+            button.x = w / 2
+        end
+    end
     cam:setWindow(0, 0, w, h)
 end
+
+function love.mousepressed(x, y, msbutton, _istouch, _presses)
+    ButtonManager.mousepressed(x, y, msbutton)
+end
+
+function love.mousereleased(x, y, msbutton, _istouch, _presses)
+    ButtonManager.mousereleased(x, y, msbutton)
+end
+
+function love.keypressed(key, _unicode)
+    handleEvent(key)
+end
+

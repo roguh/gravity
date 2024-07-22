@@ -85,7 +85,8 @@ function worldFactory.initWorld(params)
     local m_earth = 10
     local m_moon = 0.012 * m_earth
     local m_asteroids = 0.03 * m_moon
-    local m_sun = 300000 * m_earth
+    -- WHY 10?? adjust v_earth
+    local m_sun = 300000 * m_earth * 10
     -- From Mercury to Pluto, skipping Ceres and the Moon
     local mp = {0.0553, 0.815, 1, 0.107, 317.8, 95.2, 14.5, 17.1, 0.0022}
 
@@ -180,7 +181,7 @@ function worldFactory.initWorld(params)
     end
 
     -- Sun
-    world.points[i] = worldFactory.newPoint({x=x0, y=y0, v={x=0, y=0}, m=m_sun * 10, p=0})
+    world.points[i] = worldFactory.newPoint({x=x0, y=y0, v={x=0, y=0}, m=m_sun, p=0})
 
     -- Center within world boundaries
     for _, p in pairs(world.points) do
