@@ -1,5 +1,5 @@
 -- ROGUH 2024
---      made by human hands, licensed under Creative Commons 0 CC0
+--      made by human hands
 -- Simple Solar System simulation in Love2D.lua
 -- No attempt made at accurate differential equation solver, Mercury's orbit is especially unstable
 
@@ -20,9 +20,11 @@
 -- TODO legend and scale ACCURATE (orbital AU and width shown on screen)
 --      toggle accuracy (realistic size is too tiny!!!) (realistic luminance is too tiny)
 -- TODO COMETS!!!!!!!!!!!
+-- TODO pan and zoom with phone
+-- TODO pan with arrows and mouse
 
 local pi = math.pi
-local gamera = require("gamera")
+local gamera = require("external/gamera")
 local world
 local edge = 1000
 -- If changing these, must adjust STABLE SOLUTIONS
@@ -32,6 +34,8 @@ local isDown = love.keyboard.isDown
 local MODES = {"8", "1", "big"}
 
 function love.load()
+    print("Welcome to gravity by ROGUH")
+    print("Version:", _VERSION)
     --love.graphics.setDefaultFilter( 'nearest', 'nearest' )
     h = 800
     w = 800 * (.5 + 5 ^ .5 * .5)
