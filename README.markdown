@@ -1,18 +1,17 @@
 # Gravity by ROGUH
 
-We'll use this metric for a Euclidean 2-D space:
+We'll use this metric to measure distances between two points $p=(x,y)$ in a Euclidean 2-D space:
 
-$$ R(x_1, y_1, x_2, y_2) = \sqrt{(x_1 - x_2)^2 + (y_1 - y_2)^2} $$
+$$ R(p_1, p_2) = \sqrt{(x_1 - x_2)^2 + (y_1 - y_2)^2} $$
 
 Setting $G$ to a sensible value, the attraction between two points of different masses $M_1$ and $M_2$ is:
 
 $$ F_G = \frac{G M_1 M_2}{R^2}              $$
 
-From $F = ma$ and $F_x/|F| = -x/r$, the acceleration in the horizontal x direction is:
+From $F = ma$ and $F_x/|F| = -x/r$, the acceleration in the horizontal direction x for point $p_1$ is:
 
-$$ a_x = F_x / m = \frac{xGM_2}{R^3}        $$
+$$ a_{x1} = F_{x1} / M_1 = \frac{xGM_2}{R^3}        $$
 
-Thank you, Dr. Feynman. You make math look fun.
 
 ## Solar system
 
@@ -35,3 +34,7 @@ Download the Lua Love2D runtime and point it at this folder:
 love .
 ```
 
+
+## Credits
+
+Thank you, Dr. Feynman. You make math look fun.
