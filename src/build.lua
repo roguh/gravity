@@ -7,7 +7,7 @@ return {
   love = '11.5', -- version of LÖVE to use, must match github releases
   ignore = {'build'}, -- folders/files to ignore in your project
   icon = 'img/felina0.png', -- 256x256px PNG icon for game, will be converted for you
-  
+
   -- optional settings:
   use32bit = false, -- set true to build windows 32-bit as well as 64-bit
   identifier = 'com.roguh.gravity', -- macos team identifier, defaults to game.developer.name

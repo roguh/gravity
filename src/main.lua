@@ -15,13 +15,19 @@
 -- TODO when asteroids start in one point, they perturb Mercury and send it flying away
 -- TODO higher accuracy differential equations solver
 -- TODO 3D view all head on!!!! like our night sky
+-- TODO rotational momentum (how does this change w.r.t F_g?), hardcode for the 9 planets
+-- TODO add a fuel-accurate starship?
 -- TODO experiment with randomized system and higher merging rates
--- TODO draw trails to indicate velocity or direction
+-- TODO draw trails to indicate velocity or direction; or strongest sources of gravity
 -- TODO legend and scale ACCURATE (orbital AU and width shown on screen)
 --      toggle accuracy (realistic size is too tiny!!!) (realistic luminance is too tiny)
--- TODO COMETS!!!!!!!!!!!
+-- TODO COMETS!!!!!!!!!!! hardcode Haley's? velocity?
 -- TODO pan and zoom with phone
 -- TODO pan with arrows and mouse
+-- TODO pluto ceres makemake and the other dwarf planets
+
+-- TODO refactor: astronomical constants in their own module
+-- TODO refactor: world update in its own module (differential equation solver)
 
 -- Import dependencies
 local ButtonManager = require('external/simplebutton')
@@ -81,6 +87,10 @@ function love.load()
 
         buttons.pause = ButtonManager.new("PAUSE", 15, (bP + bH) * i)
         buttons.pause.onClick = function() handleEvent("space") end
+        i = i + 1
+
+        buttons.mode = ButtonManager.new("L", 15, (bP + bH) * i)
+        buttons.mode.onClick = function() handleEvent("l") end
         i = i + 1
 
         buttons.mode = ButtonManager.new("M", 15, (bP + bH) * i)
@@ -173,8 +183,10 @@ end)
     )
     local t = 0
     if world.settings.showLabels then
+        --NOPE table.sort(world.count, function(a, b) return a and b and a.label > b.label end)
         for _, c in pairs(world.count) do
-            love.graphics.print(c.label .. " " .. c.count, 100, 100 + t * 16)
+            -- TODO button width aligned
+            love.graphics.print(string.format("10 ^ %4.1f: %d", c.label, c.count), 190, 60 + t * 16)
             t = t + 1
         end
     end
@@ -224,7 +236,7 @@ function love.update(dt)
         end
         -- Count by mass
         local cat = math.floor(math.log10(p.m))
-        world.count[cat + 5] = {count=(world.count[cat + 5] or {count=0}).count + 1, label=cat}
+        world.count[cat] = {count=(world.count[cat] or {count=0}).count + 1, label=cat}
         for j, p2 in pairs(world.points) do
             if (i ~= j) then
                 -- Force of gravity: F = G M_1 M_2 / R^2
