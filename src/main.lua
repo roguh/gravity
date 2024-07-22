@@ -15,11 +15,11 @@
 -- TODO when asteroids start in one point, they perturb Mercury and send it flying away
 -- TODO higher accuracy differential equations solver
 -- TODO 3D view all head on!!!! like our night sky
--- TODO mouse and arrows pan and zoom
 -- TODO experiment with randomized system and higher merging rates
 -- TODO legend and scale ACCURATE (orbital AU and width shown on screen)
 --      toggle accuracy (realistic size is too tiny!!!) (realistic luminance is too tiny)
 -- TODO COMETS!!!!!!!!!!!
+-- TODO UI buttons
 -- TODO pan and zoom with phone
 -- TODO pan with arrows and mouse
 
@@ -31,12 +31,13 @@ local edge = 1000
 local max = {x=2000, y=2000}
 local cam = gamera.new(0, 0, max.x * edge, max.y * edge)
 local isDown = love.keyboard.isDown
-local MODES = {"8", "1", "big"}
+local MODES = {"8", "1", "random", "jovian"}
+local INIT_MODE = 1
 
 function love.load()
     print("Welcome to gravity by ROGUH")
     print("Version:", _VERSION)
-    --love.graphics.setDefaultFilter( 'nearest', 'nearest' )
+    love.graphics.setDefaultFilter( 'nearest', 'nearest' )
     h = 800
     w = 800 * (.5 + 5 ^ .5 * .5)
     love.window.setMode(w, h, {resizable=true, centered=true})
@@ -44,7 +45,7 @@ function love.load()
     cam:setWindow(0, 0, w, h)
     cam:setScale(0.25)
 
-    initWorld({mode="8"})
+    initWorld({mode=INIT_MODE})
 end
 
 function rand(a, b)
@@ -71,15 +72,16 @@ function normal01()
     return r
 end
 
+function randPoint()
+    return math.floor(rand(1, #world.points))
+end
+
 function newPoint(params)
     m=params.m or math.random()
     return {
         x=params.x or rand(max.x),
         y=params.y or rand(max.y),
-        v=params.v or {
-            x=(math.random() - 0.5) * 500,
-            y=(math.random() - 0.5) * 500
-        },
+        v=params.v or {x=0, y=0},
         m=m,
         initM=m,
         nearest=nil,
@@ -91,9 +93,19 @@ function initWorld(params)
     if not params then
         params = {}
     end
-    N = 50
-    D = 500
-    world = {points={}, G=100, count={}, settings={showLabels=false}, pause=params.pause or false, mode=params.mode or "8", dust=true, center={byMass=1}, topByMass={}}
+    D = 200
+    world = {
+        points={},
+        G=100,
+        settings={showLabels=false},
+        pause=params.pause or false,
+        mode=params.mode or INIT_MODE,
+        dust=true,
+        center={byMass=1},
+        -- Dynamically computed
+        topByMass={},
+        count={},
+    }
 
     i = 1
     -- STABLE SOLUTIONS! Don't ask "why 10"
@@ -126,21 +138,31 @@ function initWorld(params)
         i = i + 1
     end
 
-    if world.mode == "big" then
+    -- Convert int to string
+    mode = MODES[world.mode]
+    if mode == "random" then
+        -- Number of planets
+        N = 50
         if world.dust then
             -- Dust!!!
             for _=1,D do
-                world.points[i] = newPoint({m=rand(0.1)})
+                x_new = rand(0.01, 50)
+                v_new = v_earth / x_new ^ 0.5
+                world.points[i] = newPoint({m=rand(0.01, 0.1), x=x0 + x_earth * x_new, y=y0, v={x=0, y=v_new}})
                 i = i + 1
             end
         end
         
         -- Planets (small mass)
         for _=1,N do
-            world.points[i] = newPoint({m=rand(1, 100)})
+            x_new = rand(0.01, 50)
+            v_new = v_earth / x_new ^ 0.5
+            world.points[i] = newPoint({m=rand(1, 100), x=x0 + x_earth * x_new, y=y0, v={x=0, y=v_new}})
             i = i + 1
         end
-    elseif world.mode == "1" then
+
+        world.center = {point=randPoint()}
+    elseif mode == "1" then
         if params.centerEarth then
             world.center = {byMass=2}
         end
@@ -148,7 +170,7 @@ function initWorld(params)
         world.points[i] = newPoint({m=m_earth, x=x0 + x_earth, y=y0, v={x=0, y=v_earth, p=3}})
         i = i + 1
         makeMoon()
-    elseif world.mode == "8" then
+    elseif mode == "8" then
         if params.centerEarth then
             -- Nth most massive object
             world.center = {byMass=6}
@@ -201,6 +223,8 @@ function initWorld(params)
         p.x = p.x + max.x * edge / 2
         p.y = p.y + max.y * edge / 2
     end
+
+    print("Starting world", MODES[world.mode], "G " .. world.G, "# " .. #world.points)
 end
 
 function love.draw()
@@ -248,14 +272,17 @@ end)
     end
 
     love.graphics.print(
-        "f: fullscreen  space: pause  c: step  mouse or arrows: pan  scroll: zoom"
-        .. "  m: mode(" .. world.mode .. ")"
-        .. "  0-9: pick most massive (" .. (world.center.byMass or "") ..")"
+        "GRAVITY  f: fullscreen  space: pause  c: step"
+        .. "  m: mode(" .. MODES[world.mode] .. ")"
+        .. "  0-9: pick by mass (" .. (world.center.byMass or "n/a") ..")",
+        10, 10
     )
     t = 0
-    for i, c in pairs(world.count) do
-        love.graphics.print(c.label .. " " .. c.count, 100, 100 + t * 16)
-        t = t + 1
+    if world.settings.showLabels then
+        for i, c in pairs(world.count) do
+            love.graphics.print(c.label .. " " .. c.count, 100, 100 + t * 16)
+            t = t + 1
+        end
     end
 end
 
@@ -284,7 +311,6 @@ function love.update(dt)
         adjustCamera()
         return
     end
-    world.count = {[-10]={count=0, label="TOTAL"}}
     for i, p in pairs(world.points) do
     if (p.m > 0.0000001) then
         for t=1,9 do
@@ -295,9 +321,9 @@ function love.update(dt)
                 break
             end
         end
-        world.count[-10].count = world.count[-10].count + 1
+        -- Count by mass
         cat = math.floor(math.log10(p.m))
-        world.count[cat] = {count=(world.count[cat] or {count=0}).count + 1, label=cat}
+        world.count[cat + 5] = {count=(world.count[cat + 5] or {count=0}).count + 1, label=cat}
         for j, p2 in pairs(world.points) do
             if (i ~= j) then
                 -- Force of gravity: F = G M_1 M_2 / R^2
@@ -351,12 +377,8 @@ function love.keypressed(key, unicode)
         world.pause = not world.pause
      end
      if key == "m" then
-        for i=1,#MODES do
-            if MODES[i] == world.mode then
-                nextMode = MODES[(i + 1) % #MODES + 1]
-                initWorld({mode=nextMode, pause=true})
-            end
-        end
+        newMode = ((world.mode + 2) % #MODES) + 1
+        initWorld({mode=newMode, pause=true})
      end
      -- Digits 1 to 9
      if tonumber(key) and tonumber(key) < 10 then
@@ -368,7 +390,7 @@ function love.keypressed(key, unicode)
         end
      end
      if key == "0" then
-        world.center = {point=math.floor(rand(1, #world.points))}
+        world.center = {point=randPoint()}
         cam:setScale(0.25)
      end
 end
