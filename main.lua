@@ -302,12 +302,12 @@ function love.update(dt)
                 if r > 0.00000001 then
                     -- r = sqrt(x^2 + y^2)
                     -- ma = -GMmx/r^3
-                    a = world.G * p2.m / r ^ 3
+                    a = -world.G * p2.m / r ^ 3
                 else
                     a = 0
                 end
-                p.v.x = p.v.x + dt * a * (p2.x - p.x)
-                p.v.y = p.v.y + dt * a * (p2.y - p.y)
+                p.v.x = p.v.x + dt * a * (p.x - p2.x)
+                p.v.y = p.v.y + dt * a * (p.y - p2.y)
 
                 -- Merge a bit if too close
                 if p2.m > 5000 then
