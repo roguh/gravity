@@ -16,6 +16,7 @@
 -- TODO higher accuracy differential equations solver
 -- TODO 3D view all head on!!!! like our night sky
 -- TODO experiment with randomized system and higher merging rates
+-- TODO draw trails to indicate velocity or direction
 -- TODO legend and scale ACCURATE (orbital AU and width shown on screen)
 --      toggle accuracy (realistic size is too tiny!!!) (realistic luminance is too tiny)
 -- TODO COMETS!!!!!!!!!!!
@@ -135,7 +136,7 @@ function (_l, _t, _w, _h)
             love.graphics.setColor(255, 236, 224)
             love.graphics.circle("fill", p.x, p.y, r, 40)
         else
-            r = math.max(5, 3 * p.m ^ 0.4)
+            r = math.max(10, 20 * p.m ^ 0.4)
             love.graphics.circle("fill", p.x, p.y, r, 40)
         end
         -- Jove or Saturn
