@@ -55,7 +55,14 @@ where $v_{earth}$ is the known orbital velocity of the earth in our unit system 
 
 ## How to use
 
-Download the Lua Love2D runtime and point it at this folder:
+Download a build from [./build](./build) and run it with Love2D.
+This works on Android and other platforms, but not iOS.
+
+Running on iOS requires XCode on MacOS or the purchase of a special app.
+
+### From source code
+
+Download the Lua Love2D runtime from [love2d.org](https://love2d.org/) and point it at this folder:
 
 ```
 love .
@@ -65,3 +72,5 @@ love .
 ## Credits
 
 Thank you, Dr. Feynman. You make math look fun.
+
+Making use of simplebutton and gamera Love2D libraries to speed up development time.

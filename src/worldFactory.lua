@@ -1,10 +1,10 @@
 local pi = math.pi
-local INIT_MODE = 1
 local worldFactory = {}
 worldFactory.edge = 1000
 -- If changing boundaries, must adjust STABLE SOLUTIONS
 worldFactory.bounds = {x=2000, y=2000}
 worldFactory.MODES = {"8", "1", "random", "jovian"}
+local INIT_MODE = 3 -- random
 worldFactory.x_earth = worldFactory.bounds.x / 4
 
 local function rand(a, b)
