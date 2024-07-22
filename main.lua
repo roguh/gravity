@@ -6,6 +6,7 @@
 
 
 -- TODOS are in order of perceived difficulty:
+-- TODO hyperbolic space is ez, just add -t^2
 -- TODO 3D
 -- TODO galaxy spirals and galaxy collisions
 -- TODO recognizable planet shapes and colors?
