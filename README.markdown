@@ -6,11 +6,12 @@ $$ R(p_1, p_2) = \sqrt{(x_1 - x_2)^2 + (y_1 - y_2)^2} $$
 
 Setting $G$ to a sensible value, the attraction between two points of different masses $M_1$ and $M_2$ is:
 
-$$ F_G = \frac{G M_1 M_2}{R^2}              $$
+$$ F_G = \frac{G M_1 M_2}{R^2} $$
 
-From $F = ma$ and $F_x/|F| = -x/r$, the acceleration in the horizontal direction x for point $p_1$ is:
+From $F = ma$ and $F_x/|F| = -x/r$, the acceleration in the horizontal direction x for point $p_1 = (x, y)$ with mass $M_1$ depends on the sum total of all forces from every other point $p_2$.
 
-$$ a_{x1} = F_{x1} / M_1 = \frac{xGM_2}{R^3}        $$
+$$ a_x = F_x / M_1 = \sum_{p_2} \frac{xGM_2}{R(p, p_2)^3} $$
+
 
 
 ## Solar system
