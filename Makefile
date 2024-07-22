@@ -8,3 +8,6 @@ build:
 
 run: build
 	love ./build/$(BUILD_NAME)
+
+lint:
+	luacheck src/ --no-color
