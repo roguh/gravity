@@ -286,13 +286,18 @@ function love.update(dt)
     end
     if love.mouse.isDown(1) or love.mouse.isDown(2) then
         local m = world.extraForces.fromMouse.m
-        local x, y = cam:toWorld(love.mouse.getX(), love.mouse.getY())
-        world.extraForces.fromMouse = {
-            active=true,
-            x=x,
-            y=y,
-            m=m and m * 1.01 or (love.mouse.isDown(1) and -500000 or 500000),
-        }
+        local mx, my = love.mouse.getX(), love.mouse.getY()
+        if my > (bP + bH) * 6 and mx > bW * 4 then
+            local x, y = cam:toWorld(mx, my)
+            world.extraForces.fromMouse = {
+                active=true,
+                x=x,
+                y=y,
+                m=m and m * 1.01 or (love.mouse.isDown(1) and -500000 or 500000),
+            }
+        else
+            world.extraForces.fromMouse = {active=false}
+        end
     else
         world.extraForces.fromMouse = {active=false}
     end
