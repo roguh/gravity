@@ -27,8 +27,8 @@
 -- TODO pluto ceres makemake and the other dwarf planets
 
 -- Import dependencies
-local ButtonManager = require('external/Simple-Button/simplebutton')
-local gamera = require("external/gamera/gamera")
+local ButtonManager = require('external/simplebutton')
+local gamera = require("external/gamera")
 local worldFactory = require("worldFactory")
 local worldUpdate = require("worldUpdate")
 local C = require("astronomicalConstants")
