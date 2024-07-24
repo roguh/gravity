@@ -31,33 +31,19 @@ local function normal01()
     return r
 end
 
-function worldFactory.randPoint(world)
-    return math.floor(rand(1, #world.points))
-end
-
-function worldFactory.newPoint(params)
-    local m=params.m or math.random()
-    return {
-        x=params.x or rand(worldFactory.bounds.x),
-        y=params.y or rand(worldFactory.bounds.y),
-        v=params.v or {x=0, y=0},
-        m=m,
-        initM=m,
-        nearest=nil,
-        p=params.p or nil,
-    }
-end
-
 function worldFactory.initWorld(params)
     if not params then
         params = {}
+    end
+    if params.mainMenu then
+        return {simState={mode="main_menu"}}
     end
     local world = {
         points={},
         -- STABLE SOLUTIONS!
         G=100,
         settings={showLabels=false},
-        pause=params.pause or false,
+        simState={pause=params.pause or false, fastForward=false, mode="simulation"},
         mode=params.mode or INIT_MODE,
         dust=true,
         dustCount=params.dustCount or 200,
@@ -192,6 +178,23 @@ function worldFactory.initWorld(params)
     print("Created world", worldFactory.MODES[world.mode], "G " .. world.G, "# " .. #world.points)
 
     return world
+end
+
+function worldFactory.randPoint(world)
+    return math.floor(rand(1, #world.points))
+end
+
+function worldFactory.newPoint(params)
+    local m=params.m or math.random()
+    return {
+        x=params.x or rand(worldFactory.bounds.x),
+        y=params.y or rand(worldFactory.bounds.y),
+        v=params.v or {x=0, y=0},
+        m=m,
+        initM=m,
+        nearest=nil,
+        p=params.p or nil,
+    }
 end
 
 

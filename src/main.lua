@@ -47,7 +47,7 @@ local bW = 60
 local handleEvent, begin
 
 -- This stores most game state
-local world = nil
+local world = worldFactory.initWorld({mainMenu=true})
 
 function love.load()
     print("Welcome to gravity by ROGUH")
@@ -94,8 +94,17 @@ function begin()
     -- Button count
     local i = 2
 
-    buttons.pause = ButtonManager.new("||", bP, (bP + bH) * i)
+    buttons.pause = ButtonManager.new("||", bP, (bP + bH) * i, bW * 2 + bP)
     buttons.pause.onClick = function() handleEvent("space") end
+
+    buttons.step = ButtonManager.new(">>", bP + 2 * (bP + bW), (bP + bH) * i)
+    buttons.step.onClick = function()
+        world.simState.pause = true
+        world.simState.fastForward = true
+    end
+    buttons.step.onRelease = function()
+        world.simState.fastForward = false
+    end
     i = i + 1
 
     buttons.label = ButtonManager.new("LABEL", bP, (bP + bH) * i)
@@ -118,7 +127,7 @@ function begin()
 end
 
 function love.draw()
-    if not world then
+    if world.simState.mode == "main_menu" then
         -- Main menu
         love.graphics.print(
             "Welcome to GRAVITY!"
@@ -172,8 +181,8 @@ function (_l, _t, _w, _h)
 
 end)
     love.graphics.setColor(255, 255, 255)
-    if world.pause then
-        love.graphics.print("PAUSE", 100, 100, 0, 4)
+    if world.simState.pause then
+        love.graphics.print("PAUSE", 4 * (bW + bP), 50, 0, 4)
     end
 
     love.graphics.print(
@@ -220,10 +229,10 @@ local function adjustCamera()
 end
 
 function love.update(dt)
-    if not world then
+    if world.simState.mode == "main_menu" then
         return
     end
-    if world.pause and not isDown("c") then
+    if world.simState.pause and not world.simState.fastForward then
         adjustCamera()
         return
     end
@@ -291,7 +300,7 @@ handleEvent = function(key)
      end
 
      -- Main menu
-     if not world then
+    if world.simState.mode == "main_menu" then
         -- Start simulation when any key is pressed
         begin()
         return
@@ -304,13 +313,17 @@ handleEvent = function(key)
         cam:setScale(cam:getScale() * 0.8)
      end
      if key == "r" then
-        world = worldFactory.initWorld({mode=world.mode, pause=world.pause})
+        world = worldFactory.initWorld({mode=world.mode, pause=world.simState.pause})
      end
      if key == "l" then
         world.settings.showLabels = not world.settings.showLabels
      end
      if key == "space" then
-        world.pause = not world.pause
+        world.simState.pause = not world.simState.pause
+     end
+     if key == "s" then
+        world.simState.pause = true
+        world.simState.fastForward = true
      end
      if key == "m" then
         local newMode = ((world.mode + 2) % #worldFactory.MODES) + 1
@@ -341,7 +354,7 @@ function love.wheelmoved(_x, y)
 end
 
 function love.resize(w, h)
-    if not world then
+    if world.simState.mode == "main_menu" then
         -- Centered main menu
         for _, button in pairs(buttons) do
             button.x = w / 2
@@ -362,3 +375,8 @@ function love.keypressed(key, _unicode)
     handleEvent(key)
 end
 
+function love.keyreleased(key, _unicode)
+    if key == "s" then
+        world.simState.fastForward = false
+    end
+end
