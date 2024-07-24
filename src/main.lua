@@ -34,11 +34,17 @@ local ButtonManager = require('external/simplebutton')
 local gamera = require("external/gamera")
 local worldFactory = require("worldFactory")
 
-local handleEvent
 local cam = gamera.new(0, 0, worldFactory.bounds.x * worldFactory.edge, worldFactory.bounds.y * worldFactory.edge)
 local isDown = love.keyboard.isDown
 
 local buttons = {}
+-- Button dimensions
+local bH = 30
+local bP = 20
+local bW = 60
+
+-- Scope
+local handleEvent, begin
 
 -- This stores most game state
 local world = nil
@@ -54,9 +60,7 @@ function love.load()
     cam:setWindow(0, 0, w, h)
     cam:setScale(0.25)
 
-    local bH = 30
-    local bP = 20
-    ButtonManager.default.width = 60
+    ButtonManager.default.width = bW
     ButtonManager.default.height = bH
     ButtonManager.default.alignment = 'center'
     ButtonManager.default.fillType = 'line'
@@ -69,57 +73,56 @@ function love.load()
         if world then
             handleEvent("r")
             return
+        else
+            -- In main menu, begin the simulation
+            begin()
         end
+    end
+end
 
-        world = worldFactory.initWorld({})
-        buttons.start:setLabel(" NEW ")
-        buttons.start.x = 15
+function begin()
+    world = worldFactory.initWorld({})
+    buttons.start:setLabel(" NEW ")
+    buttons.start.x = bP
 
-        buttons.zoomIn = ButtonManager.new("+", 3 * 15 + 60, (bP + bH) * 2)
-        buttons.zoomIn.onClick = function() handleEvent("+") end
+    buttons.zoomIn = ButtonManager.new("+", 2 * bP + bW, (bP + bH) * 3)
+    buttons.zoomIn.onClick = function() handleEvent("+") end
 
-        buttons.zoomOut = ButtonManager.new("-", 3 * 15 + 60, (bP + bH) * 3)
-        buttons.zoomOut.onClick = function() handleEvent("-") end
+    buttons.zoomOut = ButtonManager.new("-", 2 * bP + bW, (bP + bH) * 4)
+    buttons.zoomOut.onClick = function() handleEvent("-") end
 
-        -- Button count
-        -- Button count
-        local i = 2
+    -- Button count
+    local i = 2
 
-        buttons.pause = ButtonManager.new("PAUSE", 15, (bP + bH) * i)
-        buttons.pause.onClick = function() handleEvent("space") end
+    buttons.pause = ButtonManager.new("||", bP, (bP + bH) * i)
+    buttons.pause.onClick = function() handleEvent("space") end
+    i = i + 1
+
+    buttons.label = ButtonManager.new("LABEL", bP, (bP + bH) * i)
+    buttons.label.onClick = function() handleEvent("l") end
+    i = i + 1
+
+    buttons.mode = ButtonManager.new("MODE", bP, (bP + bH) * i)
+    buttons.mode.onClick = function() handleEvent("m") end
+    i = i + 1
+
+    for k=0,9 do
+        local label = k == 0 and "random" or (k .. "")
+        buttons[label] = ButtonManager.new(
+            label,
+            bP + (bP + bW) * (k % 2),
+            (i - math.ceil(k / 2)) * (bP + bH))
+        buttons[label].onClick = function() handleEvent(k .. "") end
         i = i + 1
-
-        buttons.mode = ButtonManager.new("L", 15, (bP + bH) * i)
-        buttons.mode.onClick = function() handleEvent("l") end
-        i = i + 1
-
-        buttons.mode = ButtonManager.new("M", 15, (bP + bH) * i)
-        buttons.mode.onClick = function() handleEvent("m") end
-        i = i + 1
-
-        -- BUG MINE FIELD!!!!!!!!!
-        -- rework the step event
-        local X = false
-        buttons.step = ButtonManager.new("C", 15, (bP + bH) * i)
-        buttons.step.onClick = function() handleEvent("space") ; X = true end
-        buttons.step.onRelease = function() if X then handleEvent("space") end end
-        i = i + 1
-
-        for k=0,9 do
-            local label = k == 0 and "random" or (k .. "")
-            buttons[label] = ButtonManager.new(label, 15, (bP + bH) * i)
-            buttons[label].onClick = function() handleEvent(k .. "") end
-            i = i + 1
-        end
-
     end
 end
 
 function love.draw()
     if not world then
+        -- Main menu
         love.graphics.print(
             "Welcome to GRAVITY!"
-            .. " Press the button below to start the simulation :)",
+            .. " Press START or any button to begin the simulation :)",
             10, 10, 0, 1.3)
         ButtonManager.draw()
         return
@@ -281,13 +284,16 @@ handleEvent = function(key)
 
      if key == "q" or key == "escape" then
         love.event.quit()
-     end
-     if key == "f" then
+        return
+     elseif key == "f" then
         love.window.setFullscreen(not love.window.getFullscreen())
+        return
      end
 
      -- Main menu
      if not world then
+        -- Start simulation when any key is pressed
+        begin()
         return
      end
 
