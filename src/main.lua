@@ -26,22 +26,20 @@
 -- TODO pan with arrows and mouse
 -- TODO pluto ceres makemake and the other dwarf planets
 
--- TODO refactor: astronomical constants in their own module
--- TODO refactor: world update in its own module (differential equation solver)
-
 -- Import dependencies
-local ButtonManager = require('external/simplebutton')
-local gamera = require("external/gamera")
+local ButtonManager = require('external/Simple-Button/simplebutton')
+local gamera = require("external/gamera/gamera")
 local worldFactory = require("worldFactory")
+local worldUpdate = require("worldUpdate")
+local C = require("astronomicalConstants")
 
-local cam = gamera.new(0, 0, worldFactory.bounds.x * worldFactory.edge, worldFactory.bounds.y * worldFactory.edge)
-local isDown = love.keyboard.isDown
+local cam = gamera.new(0, 0, C.bounds.x * C.edge, C.bounds.y * C.edge)
 
 local buttons = {}
 -- Button dimensions
 local bH = 30
 local bP = 20
-local bW = 60
+local bW = 30
 
 -- Scope
 local handleEvent, begin
@@ -68,7 +66,7 @@ function love.load()
     ButtonManager.default.textColor = {1, 1, 1, 1}
 
     -- Make sure replaced label is the same character count as initial label, self.setLabel is buggy
-    buttons.start = ButtonManager.new("START", love.graphics.getWidth() / 2, bP + bH)
+    buttons.start = ButtonManager.new("GO", love.graphics.getWidth() / 2, bP + bH)
     buttons.start.onClick = function()
         if world then
             handleEvent("r")
@@ -82,14 +80,24 @@ end
 
 function begin()
     world = worldFactory.initWorld({})
-    buttons.start:setLabel(" NEW ")
+    buttons.start:setLabel(" R")
     buttons.start.x = bP
 
     buttons.zoomIn = ButtonManager.new("+", 2 * bP + bW, (bP + bH) * 3)
-    buttons.zoomIn.onClick = function() handleEvent("+") end
+    buttons.zoomIn.onClick = function()
+        world.simState.zoom = "+"
+    end
+    buttons.zoomIn.onRelease = function()
+        world.simState.zoom = nil
+    end
 
     buttons.zoomOut = ButtonManager.new("-", 2 * bP + bW, (bP + bH) * 4)
-    buttons.zoomOut.onClick = function() handleEvent("-") end
+    buttons.zoomOut.onClick = function()
+        world.simState.zoom = "-"
+    end
+    buttons.zoomOut.onRelease = function()
+        world.simState.zoom = nil
+    end
 
     -- Button count
     local i = 2
@@ -107,16 +115,16 @@ function begin()
     end
     i = i + 1
 
-    buttons.label = ButtonManager.new("LABEL", bP, (bP + bH) * i)
+    buttons.label = ButtonManager.new("L", bP, (bP + bH) * i)
     buttons.label.onClick = function() handleEvent("l") end
     i = i + 1
 
-    buttons.mode = ButtonManager.new("MODE", bP, (bP + bH) * i)
+    buttons.mode = ButtonManager.new("M", bP, (bP + bH) * i)
     buttons.mode.onClick = function() handleEvent("m") end
     i = i + 1
 
     for k=0,9 do
-        local label = k == 0 and "random" or (k .. "")
+        local label = k == 0 and "Rnd" or (k .. "")
         buttons[label] = ButtonManager.new(
             label,
             bP + (bP + bW) * (k % 2),
@@ -131,7 +139,7 @@ function love.draw()
         -- Main menu
         love.graphics.print(
             "Welcome to GRAVITY!"
-            .. " Press START or any button to begin the simulation :)",
+            .. " Press GO or any button to begin the simulation :)",
             10, 10, 0, 1.3)
         ButtonManager.draw()
         return
@@ -182,7 +190,8 @@ function (_l, _t, _w, _h)
 end)
     love.graphics.setColor(255, 255, 255)
     if world.simState.pause then
-        love.graphics.print("PAUSE", 4 * (bW + bP), 50, 0, 4)
+        local msg = world.simState.fastForward and ">>" or "PAUSED"
+        love.graphics.print(msg, 4 * (bW + bP), 50, 0, 4)
     end
 
     love.graphics.print(
@@ -224,7 +233,8 @@ local function adjustCamera()
     end
     cam:setPosition(center.x, center.y)
 
-    local camscale = isDown("down") and 0.9 or (isDown("up") and (1 / 0.9) or 1)
+    local camscale = world.simState.zoom == "-" and 0.9
+        or (world.simState.zoom == "+" and (1 / 0.9) or 1)
     cam:setScale(cam:getScale() * camscale)
 end
 
@@ -236,55 +246,7 @@ function love.update(dt)
         adjustCamera()
         return
     end
-    for i, p in pairs(world.points) do
-    if (p.m > 0.0000001) then
-        for t=1,9 do
-            -- Find top 9 most massive objects
-            local T = world.topByMass[t]
-            if p.m >= (T and world.points[T].m or 0) then
-                world.topByMass[t] = i
-                break
-            end
-        end
-        -- Count by mass
-        local cat = math.floor(math.log10(p.m))
-        world.count[cat] = {count=(world.count[cat] or {count=0}).count + 1, label=cat}
-        for j, p2 in pairs(world.points) do
-            if (i ~= j) then
-                -- Force of gravity: F = G M_1 M_2 / R^2
-                -- F / m_1 = a_1
-                local r = ((p.x - p2.x) ^ 2 + (p.y - p2.y) ^ 2) ^ (1/2)
-                local a = 0
-                if r > 0.00000001 then
-                    -- r = sqrt(x^2 + y^2)
-                    -- ma = -GMmx/r^3
-                    a = -world.G * p2.m / r ^ 3
-                end
-                p.v.x = p.v.x + dt * a * (p.x - p2.x)
-                p.v.y = p.v.y + dt * a * (p.y - p2.y)
-
-                -- Find distance to sun
-                if p2.m > 5000 then
-                    p.nearest = r / worldFactory.x_earth
-                end
-                -- Merge a bit if too close
-                if r < 1 and p.m > p2.m then
-                    p.m = p.m + p2.m / 2
-                    p2.m = p2.m / 2
-                    -- print("merge", i, j)
-                end
-            end
-        end
-        p.x = p.x + dt * p.v.x
-        p.y = p.y + dt * p.v.y
-    else
-        -- RIP
-        p.m = 0
-        p.v.x = 0
-        p.v.y = 0
-        -- print("death", i)
-    end
-    end
+    worldUpdate.worldUpdate(world, dt)
     adjustCamera()
 end
 
@@ -306,11 +268,11 @@ handleEvent = function(key)
         return
      end
 
-     if key == "+" then
-        cam:setScale(cam:getScale() / 0.8)
+     if key == "=" then
+        key = "+"
      end
-     if key == "-" then
-        cam:setScale(cam:getScale() * 0.8)
+     if key == "+" or key == "-" then
+        world.simState.zoom = key
      end
      if key == "r" then
         world = worldFactory.initWorld({mode=world.mode, pause=world.simState.pause})
@@ -332,16 +294,9 @@ handleEvent = function(key)
      -- Digits 1 to 9
      if tonumber(key) and tonumber(key) < 10 then
         world.center = {byMass=tonumber(key)}
-        -- TODO if velocity too large, pause
-        if world.center == 1 then
-            cam:setScale(0.25)
-        else
-            cam:setScale(2)
-        end
      end
      if key == "0" then
         world.center = {point=worldFactory.randPoint(world)}
-        cam:setScale(0.25)
      end
 end
 
@@ -364,7 +319,14 @@ function love.resize(w, h)
 end
 
 function love.mousepressed(x, y, msbutton, _istouch, _presses)
-    ButtonManager.mousepressed(x, y, msbutton)
+    if world.simState.mode == "main_menu" then
+        begin()
+    else
+        local changes = ButtonManager.mousepressed(x, y, msbutton)
+        if not changes and world.simState.pause then
+            world.simState.pause = false
+        end
+    end
 end
 
 function love.mousereleased(x, y, msbutton, _istouch, _presses)
@@ -379,4 +341,10 @@ function love.keyreleased(key, _unicode)
     if key == "s" then
         world.simState.fastForward = false
     end
+     if key == "=" then
+        key = "+"
+     end
+     if key == "+" or key == "-" then
+        world.simState.zoom = nil
+     end
 end
