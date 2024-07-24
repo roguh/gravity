@@ -2,8 +2,8 @@ local C = require("astronomicalConstants")
 
 local pi = math.pi
 local worldFactory = {}
-worldFactory.MODES = {"8", "1", "random", "jovian"}
-local INIT_MODE = 3 -- random
+worldFactory.MODES = {"8", "random", "1", "jovian", "binary"}
+local INIT_MODE = 2
 
 local function rand(a, b)
     -- Uniformly distributed between a and b
@@ -41,7 +41,16 @@ function worldFactory.initWorld(params)
         -- STABLE SOLUTIONS!
         G=100,
         settings={showLabels=false},
-        simState={pause=params.pause or false, fastForward=false, mode="simulation", zoom=nil},
+        simState={
+            pause=params.pause or false,
+            fastForward=false,
+            mode="simulation",
+            zoom=nil,
+            fps=0,
+            totalTime=0,
+            timeMultiplier=1
+        },
+        extraForces={fromMouse={active=false}},
         mode=params.mode or INIT_MODE,
         dust=true,
         dustCount=params.dustCount or 200,
@@ -64,7 +73,7 @@ function worldFactory.initWorld(params)
 
     -- Convert int to string
     local mode = worldFactory.MODES[world.mode]
-    if mode == "random" then
+    if mode == "random" or mode == "binary" then
         -- Number of planets
         local planetCount = 50
         if world.dust then
@@ -149,6 +158,18 @@ function worldFactory.initWorld(params)
 
     -- Sun
     world.points[i] = worldFactory.newPoint({x=C.x0, y=C.y0, v={x=0, y=0}, m=C.m_sun, p=0})
+    i = i + 1
+    if mode == "binary" then
+        local r2 = 13
+        world.points[i] = worldFactory.newPoint({
+            x=C.x0 - C.x_earth * r2,
+            y=C.y0,
+            v={x=0, y=-C.v_earth / r2 ^ 0.5},
+            m=C.m_sun / 6,
+            p=0
+        })
+        i = i + 1
+    end
 
     -- Center within world boundaries
     for _, p in pairs(world.points) do

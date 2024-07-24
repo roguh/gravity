@@ -8,23 +8,22 @@
 -- TODOS are in order of perceived difficulty:
 -- TODO hyperbolic space is ez, just add -t^2
 -- TODO 3D
--- TODO galaxy spirals and galaxy collisions
+-- TODO galaxy spirals and galaxy collisions (accurate fusion time and star color)
 -- TODO recognizable planet shapes and colors?
--- TODO MOOOOOOOOOOOOOON
--- TODO Jovian lunar system with resonance
--- TODO when asteroids start in one point, they perturb Mercury and send it flying away
 -- TODO higher accuracy differential equations solver
+    -- TODO Jovian lunar system with resonance
+    -- TODO MOOOOOOOOOOOOOON
+    -- TODO when asteroids start in one point, they perturb Mercury and send it flying away
 -- TODO 3D view all head on!!!! like our night sky
--- TODO rotational momentum (how does this change w.r.t F_g?), hardcode for the 9 planets
 -- TODO add a fuel-accurate starship?
 -- TODO experiment with randomized system and higher merging rates
 -- TODO draw trails to indicate velocity or direction; or strongest sources of gravity
--- TODO legend and scale ACCURATE (orbital AU and width shown on screen)
---      toggle accuracy (realistic size is too tiny!!!) (realistic luminance is too tiny)
 -- TODO COMETS!!!!!!!!!!! hardcode Haley's? velocity?
--- TODO pan and zoom with phone
--- TODO pan with arrows and mouse
+
+-- TODO change target with mouse/tap
+-- TODO apply spontaneous force by holding mouse/tap
 -- TODO pluto ceres makemake and the other dwarf planets
+
 
 -- Import dependencies
 local ButtonManager = require('external/simplebutton')
@@ -32,6 +31,7 @@ local gamera = require("external/gamera")
 local worldFactory = require("worldFactory")
 local worldUpdate = require("worldUpdate")
 local C = require("astronomicalConstants")
+local floor = math.floor
 
 local cam = gamera.new(0, 0, C.bounds.x * C.edge, C.bounds.y * C.edge)
 
@@ -52,7 +52,7 @@ function love.load()
     print("Version:", _VERSION)
     love.graphics.setDefaultFilter( 'nearest', 'nearest' )
     local h = 800
-    local w = 800 * (.5 + 5 ^ .5 * .5)
+    local w = 800 * (.5 + 5 ^ .5 * .5) -- golden ratio
     love.window.setMode(w, h, {resizable=true, centered=true})
     love.window.setTitle("GRAVITY")
     cam:setWindow(0, 0, w, h)
@@ -66,7 +66,7 @@ function love.load()
     ButtonManager.default.textColor = {1, 1, 1, 1}
 
     -- Make sure replaced label is the same character count as initial label, self.setLabel is buggy
-    buttons.start = ButtonManager.new("GO", love.graphics.getWidth() / 2, bP + bH)
+    buttons.start = ButtonManager.new("GO", love.graphics.getWidth() / 2, bP + 2 * bH)
     buttons.start.onClick = function()
         if world then
             handleEvent("r")
@@ -83,7 +83,7 @@ function begin()
     buttons.start:setLabel(" R")
     buttons.start.x = bP
 
-    buttons.zoomIn = ButtonManager.new("+", 2 * bP + bW, (bP + bH) * 3)
+    buttons.zoomIn = ButtonManager.new("+", bP + 2 * (bP + bW), (bP + bH) * 4)
     buttons.zoomIn.onClick = function()
         world.simState.zoom = "+"
     end
@@ -91,7 +91,7 @@ function begin()
         world.simState.zoom = nil
     end
 
-    buttons.zoomOut = ButtonManager.new("-", 2 * bP + bW, (bP + bH) * 4)
+    buttons.zoomOut = ButtonManager.new("-", bP + 2 * (bP + bW), (bP + bH) * 5)
     buttons.zoomOut.onClick = function()
         world.simState.zoom = "-"
     end
@@ -100,7 +100,7 @@ function begin()
     end
 
     -- Button count
-    local i = 2
+    local i = 3
 
     buttons.pause = ButtonManager.new("||", bP, (bP + bH) * i, bW * 2 + bP)
     buttons.pause.onClick = function() handleEvent("space") end
@@ -113,6 +113,16 @@ function begin()
     buttons.step.onRelease = function()
         world.simState.fastForward = false
     end
+
+    buttons.faster = ButtonManager.new("<<|", bP + 3 * (bP + bW), (bP + bH) * i)
+    buttons.faster.onClick = function() handleEvent("<") end
+
+    buttons.faster = ButtonManager.new("|>>", bP + 4 * (bP + bW), (bP + bH) * i)
+    buttons.faster.onClick = function() handleEvent(">") end
+
+    buttons.faster = ButtonManager.new("-1", bP + 5 * (bP + bW), (bP + bH) * i)
+    buttons.faster.onClick = function() handleEvent("b") end
+
     i = i + 1
 
     buttons.label = ButtonManager.new("L", bP, (bP + bH) * i)
@@ -121,6 +131,7 @@ function begin()
 
     buttons.mode = ButtonManager.new("M", bP, (bP + bH) * i)
     buttons.mode.onClick = function() handleEvent("m") end
+    i = i + 1
     i = i + 1
 
     for k=0,9 do
@@ -145,8 +156,17 @@ function love.draw()
         return
     end
 
+local function massToRadius(m)
+    return math.max(10, 20 * m ^ 0.4)
+end
+
 cam:draw(
 function (_l, _t, _w, _h)
+    local fromMouse = world.extraForces.fromMouse
+    if fromMouse.active then
+        love.graphics.setColor(fromMouse.m > 0 and 255 or 0, 255, 0)
+        love.graphics.circle("line", fromMouse.x, fromMouse.y, massToRadius(math.abs(fromMouse.m)) / 20)
+    end
     for i, p in pairs(world.points) do
     if p.m > 0 then
         if p.m <= 0.5 then
@@ -166,7 +186,7 @@ function (_l, _t, _w, _h)
             love.graphics.setColor(255, 236, 224)
             love.graphics.circle("fill", p.x, p.y, r, 40)
         else
-            r = math.max(10, 20 * p.m ^ 0.4)
+            r = massToRadius(p.m)
             love.graphics.circle("fill", p.x, p.y, r, 40)
         end
         -- Jove or Saturn
@@ -195,12 +215,14 @@ end)
     end
 
     love.graphics.print(
-           "  m: mode(" .. worldFactory.MODES[world.mode] .. ")"
+           "multiplier (" .. world.simState.timeMultiplier .. ")"
+        .. "  m: mode(" .. worldFactory.MODES[world.mode] .. ")"
         .. "  0-9: pick by mass (" .. (world.center.byMass or "n/a") ..")"
-        .. "  f: fullscreen  space: pause"
-        .. "  c: step  r: start anew"
+        .. "  f: fullscreen  space: pause  <: slow  >: fast  b: backwards"
+        .. "  s: step  r: start anew"
+        .. "\nT=" .. floor(world.simState.totalTime) .. " FPS=" .. floor(world.simState.fps) .. ""
         ,
-        10, 10, 0, 1.3
+        bP, bP, 0, 1.3
     )
     local t = 0
     if world.settings.showLabels then
@@ -212,6 +234,22 @@ end)
         end
     end
 
+    -- Draw a ruler in AU units
+    -- Line from x1 y1 to x2 y2
+    local au_size = select(1, cam:toScreen(C.x_earth, 0)) - select(1, cam:toScreen(0, 0))
+    local x = au_size
+    local y = love.graphics.getHeight() - bP
+    local lastLabel = -100
+    for i=1,1000 do
+        love.graphics.line(x * (i - 1), y, x * i, y)
+        love.graphics.circle("line", x * i, y - 3, 1)
+        if x * i - x * lastLabel > 15 * math.ceil(math.log10(i)) then
+            love.graphics.print(i .. "", x * i, y - bP)
+            lastLabel = i
+        end
+    end
+
+    buttons.pause:setLabel(world.simState.pause and " >" or "||")
     ButtonManager.draw()
 end
 
@@ -246,7 +284,19 @@ function love.update(dt)
         adjustCamera()
         return
     end
-    worldUpdate.worldUpdate(world, dt)
+    if love.mouse.isDown(1) or love.mouse.isDown(2) then
+        local m = world.extraForces.fromMouse.m
+        local x, y = cam:toWorld(love.mouse.getX(), love.mouse.getY())
+        world.extraForces.fromMouse = {
+            active=true,
+            x=x,
+            y=y,
+            m=m and m * 1.01 or (love.mouse.isDown(1) and -500000 or 500000),
+        }
+    else
+        world.extraForces.fromMouse = {active=false}
+    end
+    worldUpdate.worldUpdate(world, world.simState.timeMultiplier * dt)
     adjustCamera()
 end
 
@@ -274,14 +324,25 @@ handleEvent = function(key)
      if key == "+" or key == "-" then
         world.simState.zoom = key
      end
+     if key == "space" then
+        world.simState.timeMultiplier = 1
+        world.simState.pause = not world.simState.pause
+     end
+     if key == ">" or key == "." then
+        world.simState.timeMultiplier = world.simState.timeMultiplier * 1.1
+     end
+     if key == "<" or key == "," then
+        world.simState.timeMultiplier = world.simState.timeMultiplier / 1.1
+     end
+     if key == "b" then
+        -- WHOA
+        world.simState.timeMultiplier = -world.simState.timeMultiplier
+     end
      if key == "r" then
         world = worldFactory.initWorld({mode=world.mode, pause=world.simState.pause})
      end
      if key == "l" then
         world.settings.showLabels = not world.settings.showLabels
-     end
-     if key == "space" then
-        world.simState.pause = not world.simState.pause
      end
      if key == "s" then
         world.simState.pause = true
